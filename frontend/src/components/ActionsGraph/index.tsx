@@ -1,4 +1,4 @@
-import { Box, Grid, Slider, Typography } from "@mui/material";
+import { Box, Grid, Slider, TextField, Typography } from "@mui/material";
 import LoadingButton from '@mui/lab/LoadingButton';
 import { GraphData } from "../../schemas";
 import { useState } from "react";
@@ -7,6 +7,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import InsertChartIcon from '@mui/icons-material/InsertChart';
 import { GraphDataService } from "../../services/GraphDataService";
 import FeedBackAlert from "../FeedBackAlert";
+import LoadingBackDrop from "../LoadingBackDrop";
 
 type IActionsGraphProps = {
     setData(state: GraphData): void
@@ -14,17 +15,30 @@ type IActionsGraphProps = {
 
 export default function ActionsGraph({ setData }: IActionsGraphProps) {
 
-    const [labelLenght, setLabelLenght] = useState<number>()
+    const [labelLenght, setLabelLenght] = useState<number>(5000)
     const [searchGraphDataLoading, setSearchGraphDataLoading] = useState<boolean>()
     const [loadingActions, setLoadingActions] = useState<boolean>(false)
     const [loadingError, setLoadingError] = useState<boolean>(false)
     const [loadingSuccess, setLoadingSuccess] = useState<boolean>(false)
     const [errorMsg, setErrorMsg] = useState<string>('')
     const [successMsg, setSuccessMsg] = useState<string>('')
+    const [lenghtGenerate, setLenghtGenerate] = useState<number>(1000)
 
-    const searchGraphData = () => {
+    const searchGraphData = async () => {
 
         setSearchGraphDataLoading(true)
+
+        await GraphDataService.getGraphDataLimit(labelLenght).then(res => {
+            setSuccessMsg('Limite aplicado com sucesso!')
+            setData(res.data)
+            setLoadingSuccess(true)
+        }).catch(err => {
+            setErrorMsg(err.message)
+            setLoadingError(true)
+        })
+
+        setSearchGraphDataLoading(false)
+
     }
 
     const deleteGraphData = async () => {
@@ -47,7 +61,7 @@ export default function ActionsGraph({ setData }: IActionsGraphProps) {
     const generateGraphData = async () => {
         setLoadingActions(true)
 
-        await GraphDataService.getGenerateAllData().then(async res => {
+        await GraphDataService.getGenerateAllData(lenghtGenerate).then(async res => {
             setLoadingError(false)
             setLoadingSuccess(true)
             setSuccessMsg('Banco foi povoado com sucesso!')
@@ -69,13 +83,15 @@ export default function ActionsGraph({ setData }: IActionsGraphProps) {
 
             {loadingError ? <FeedBackAlert type={'error'} message={errorMsg} handleClose={setLoadingError} /> : <></>}
             {loadingSuccess ? <FeedBackAlert type={'success'} message={successMsg} handleClose={setLoadingSuccess} /> : <></>}
+            {loadingActions ? <LoadingBackDrop /> : <></>}
+
 
             <Typography variant="h4" >Ações:</Typography>
             <Box sx={{ marginTop: 1 }}>
                 <Typography variant="h6">Número Máximo de Retornos de Nós/Arestas</Typography>
                 <Grid container spacing={2}>
                     <Grid item xs={8}>
-                        <Slider defaultValue={5000} aria-label="Default" valueLabelDisplay="auto" max={10000} />
+                        <Slider defaultValue={labelLenght} aria-label="Default" valueLabelDisplay="auto" max={10000} />
 
                     </Grid>
                     <Grid item xs={4}>
@@ -94,39 +110,48 @@ export default function ActionsGraph({ setData }: IActionsGraphProps) {
             </Box>
             <Box>
                 <Typography variant="h6">Banco de Dados</Typography>
-                <Grid container spacing={2} >
-                    <Grid item xs={6}>
-                        <Box>
-                            <Typography component="p">Limpar Banco</Typography>
-                            <LoadingButton
-                                color="error"
-                                size="small"
-                                onClick={deleteGraphData}
-                                loading={loadingActions}
-                                endIcon={<DeleteIcon />}
-                                loadingPosition="end"
-                                variant="contained"
-                            >
-                                <span>Limpar</span>
-                            </LoadingButton>
+                <Grid container spacing={2}>
+                    <Grid item >
+                        <Box sx={{ flexDirection: 'column' }}>
+                            <Box sx={{ padding: 1 }}>
+                                <LoadingButton
+                                    color="error"
+                                    size="small"
+                                    onClick={deleteGraphData}
+                                    loading={loadingActions}
+                                    endIcon={<DeleteIcon />}
+                                    loadingPosition="end"
+                                    variant="contained"
+                                    fullWidth
+                                >
+                                    <span>Limpar</span>
+                                </LoadingButton>
+                            </Box>
+                            <Box sx={{ padding: 1 }}>
+                                <LoadingButton
+                                    color="success"
+                                    size="small"
+                                    onClick={generateGraphData}
+                                    loading={loadingActions}
+                                    endIcon={<InsertChartIcon />}
+                                    loadingPosition="end"
+                                    variant="contained"
+                                    fullWidth
+                                >
+                                    <span>Povoar</span>
+                                </LoadingButton>
+                            </Box>
                         </Box>
                     </Grid>
-                    <Grid item xs={6}>
-                        <Typography component="p">Povoar Banco</Typography>
-
-                        <LoadingButton
-                            color="success"
-                            size="small"
-                            onClick={generateGraphData}
-                            loading={loadingActions}
-                            endIcon={<InsertChartIcon />}
-                            loadingPosition="end"
-                            variant="contained"
-                        >
-                            <span>Povoar</span>
-                        </LoadingButton>
+                    <Grid item >
+                        <Box sx={{ display: 'flex', padding: 2 }}>
+                            <TextField label="Número de Pessoas" variant="outlined" defaultValue={lenghtGenerate} onChange={(e) => setLenghtGenerate(Number(e.target.value))}
+                                sx={{ alignItems: 'center', justifyContent: 'center' }}
+                            />
+                        </Box>
                     </Grid>
                 </Grid>
+
             </Box>
         </Box>
     )
