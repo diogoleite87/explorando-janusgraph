@@ -19,7 +19,7 @@ const Alert = forwardRef<HTMLDivElement, AlertProps>(function Alert(
 export default function ({ type, message, handleClose }: IFeedBackAlertProps) {
 
   return (
-    <Snackbar open autoHideDuration={6000} onClose={() => handleClose(false)}>
+    <Snackbar open autoHideDuration={6000} onClose={() => handleClose(false)} >
       <Alert onClose={() => handleClose(false)} severity={type} sx={{ width: '100%' }}>
         {message ? message : 'Aviso'}
       </Alert>
