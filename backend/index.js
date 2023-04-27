@@ -1,12 +1,14 @@
 const gremlin = require("gremlin");
 const express = require("express");
 const cors = require("cors");
+const faker = require("faker");
 
 const traversal = gremlin.process.AnonymousTraversalSource.traversal;
 const DriverRemoteConnection = gremlin.driver.DriverRemoteConnection;
 const __ = gremlin.process.statics;
 
 const app = express();
+app.use(express.json());
 app.use(cors());
 const PORT = 3000;
 
@@ -14,7 +16,7 @@ const g = traversal().withRemote(
   new DriverRemoteConnection("ws://localhost:8182/gremlin")
 );
 
-async function createPeople(name, age, cityId) {
+async function createPeople(name, age, gender, cityId) {
   const personVertex = await g.V().hasLabel("People").has("name", name).next();
 
   if (personVertex.value) {
@@ -24,6 +26,7 @@ async function createPeople(name, age, cityId) {
       .addV("People")
       .property("name", name)
       .property("age", age)
+      .property("gender", gender)
       .next();
     const newPersonVertexId = newPersonVertex.value.id;
 
@@ -75,9 +78,48 @@ async function createCity(name, stateId) {
   return city.value.id;
 }
 
+async function getPeople(id) {
+  const result = await g
+    .V()
+    .hasLabel("People")
+    .hasId(id)
+    .project("id", "name", "label", "age", "gender")
+    .by(__.id())
+    .by("name")
+    .by(__.label())
+    .by("age")
+    .by("gender")
+    .next();
+
+  return {
+    id: result.value.get("id"),
+    age: result.value.get("age"),
+    gender: result.value.get("gender"),
+    label: result.value.get("label"),
+    name: result.value.get("name"),
+  };
+}
+
 async function getAllData() {
   const result = await g
     .V()
+    .project("id", "name", "label")
+    .by(__.id())
+    .by("name")
+    .by(__.label())
+    .toList();
+
+  return result.map((node) => ({
+    id: node.get("id"),
+    name: node.get("name"),
+    label: node.get("label"),
+  }));
+}
+
+async function getLimitData(limit) {
+  const result = await g
+    .V()
+    .limit(limit)
     .project("id", "name", "label")
     .by(__.id())
     .by("name")
@@ -123,7 +165,7 @@ async function deleteAll() {
   return;
 }
 
-async function generateRandomData(lenght = 1000) {
+async function generateRandomData(lenght) {
   const data = [
     {
       country: "Brazil",
@@ -244,6 +286,8 @@ async function generateRandomData(lenght = 1000) {
     },
   ];
 
+  const genders = ["Masculino", "Feminino", "Não-binário", "Outro"];
+
   let cityIDs = [];
 
   for (let i = 0; i < data.length; i++) {
@@ -257,13 +301,38 @@ async function generateRandomData(lenght = 1000) {
   }
 
   for (let i = 0; i < lenght; i++) {
-    let cityIdSorted = Math.floor(Math.random() * cityIDs.length);
-    await createPeople(i.toString(), 10, cityIDs[cityIdSorted]);
+    const cityIdSorted = Math.floor(Math.random() * cityIDs.length);
+    const genderSorted = Math.floor(Math.random() * genders.length);
+
+    const name = faker.name.findName();
+    const age = Math.floor(Math.random() * 100) + 1;
+
+    await createPeople(name, age, genders[genderSorted], cityIDs[cityIdSorted]);
   }
 }
 
-async function teste() {
-  result = await listAllEdges();
+async function updatePeople(id, update) {
+  const result = await g
+    .V()
+    .hasId(id)
+    .property("name", update.name)
+    .property("age", update.age)
+    .property("gender", update.gender)
+    .toList();
+
+  return result;
+}
+
+async function visualizantionData(id) {
+  const result = await g
+    .V(id)
+    .as("vertex")
+    .inE()
+    .as("edges")
+    .outV()
+    .as("vertices")
+    .select("vertex", "edges", "vertices")
+    .toList();
 
   return result;
 }
@@ -274,6 +343,12 @@ app.get("/", (req, res) => {
 
 app.get("/people/all", async (req, res) => {
   const result = await getAllData();
+
+  res.json(result);
+});
+
+app.put("/people/:id", async (req, res) => {
+  const result = await updatePeople(req.params.id, req.body);
 
   res.json(result);
 });
@@ -291,24 +366,35 @@ app.get("/graph/all", async (req, res) => {
   res.json({ nodes, links });
 });
 
-app.get("/state/all", async (req, res) => {});
+app.get("/graph/:limit", async (req, res) => {
+  const nodes = await getLimitData(Number(req.params.limit));
 
-app.get("/generate", async (req, res) => {
-  await generateRandomData();
-
-  res.send("Ok");
+  res.json({ nodes, links: [] });
 });
 
-app.get("/people/teste", async (req, res) => {
-  teste = await teste();
+app.get("/visualization/:id", async (req, res) => {
+  const result = await visualizantionData(req.params.id);
 
-  res.json(teste);
+  return res.json(result);
+});
+app.get("/state/all", async (req, res) => {});
+
+app.get("/generate/:lenght", async (req, res) => {
+  await generateRandomData(req.params.lenght);
+
+  res.end();
 });
 
 app.get("/delete/all", async (req, res) => {
   await deleteAll();
 
   res.send("Ok");
+});
+
+app.get("/people/:id", async (req, res) => {
+  const result = await getPeople(Number(req.params.id));
+
+  return res.json(result);
 });
 
 app.listen(PORT, () => {
