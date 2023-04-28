@@ -150,6 +150,26 @@ async function getAllState() {
   }));
 }
 
+async function getAllCountry() {
+  result = await g
+    .V()
+    .hasLabel("Country")
+    .project("id", "name", "label")
+    .by(__.id())
+    .by("name")
+    .by(__.label())
+    .toList();
+
+  return {
+    nodes: result.map((node) => ({
+      id: node.get("id"),
+      name: node.get("name"),
+      label: node.get("label"),
+    })),
+    links: [],
+  };
+}
+
 async function listAllEdges() {
   const result = await g.E().toList();
 
@@ -323,18 +343,79 @@ async function updatePeople(id, update) {
   return result;
 }
 
+async function getNameVisualization(id) {
+  const result = await g.V(id).valueMap("name").toList();
+  const name = result[0].get("name");
+
+  return name[0];
+}
+
 async function visualizantionData(id) {
-  const result = await g
+  const nodes = await g.V(id).both().toList();
+  const links = await g
     .V(id)
-    .as("vertex")
-    .inE()
-    .as("edges")
-    .outV()
-    .as("vertices")
-    .select("vertex", "edges", "vertices")
+    .bothE()
+    .project("id", "source", "target")
+    .by(__.id())
+    .by(__.inV().id())
+    .by(__.outV().id())
     .toList();
 
-  return result;
+  return {
+    nodes: await Promise.all(
+      nodes.map(async (node) => ({
+        id: node.id,
+        label: node.label,
+        name: await getNameVisualization(node.id),
+      }))
+    ),
+    links: links.map((link) => ({
+      source: link.get("source"),
+      target: link.get("target"),
+    })),
+  };
+}
+
+async function interactiveData(id) {
+  const nodes = await g.V(id).both().toList();
+  const links = await g
+    .V(id)
+    .bothE()
+    .project("id", "source", "target")
+    .by(__.id())
+    .by(__.inV().id())
+    .by(__.outV().id())
+    .toList();
+
+  return {
+    nodes: await Promise.all(
+      nodes.map(async (node) => ({
+        id: node.id,
+        label: node.label,
+        name: await getNameVisualization(node.id),
+      }))
+    ),
+    links: links.map((link) => ({
+      source: link.get("source"),
+      target: link.get("target"),
+    })),
+  };
+}
+
+async function getVertexInfo(id) {
+  const result = await g
+    .V(id)
+    .project("id", "name", "label")
+    .by(__.id())
+    .by("name")
+    .by(__.label())
+    .toList();
+
+  return {
+    id: result[0].get("id"),
+    name: result[0].get("name"),
+    label: result[0].get("label"),
+  };
 }
 
 app.get("/", (req, res) => {
@@ -372,8 +453,24 @@ app.get("/graph/:limit", async (req, res) => {
   res.json({ nodes, links: [] });
 });
 
+app.get("/interactive/:id", async (req, res) => {
+  const result = await interactiveData(req.params.id);
+
+  return res.json(result);
+});
+
+app.get("/country/all", async (req, res) => {
+  const result = await getAllCountry();
+
+  return res.json(result);
+});
+
 app.get("/visualization/:id", async (req, res) => {
   const result = await visualizantionData(req.params.id);
+
+  const vertex = await getVertexInfo(req.params.id);
+
+  result.nodes.push(vertex);
 
   return res.json(result);
 });
