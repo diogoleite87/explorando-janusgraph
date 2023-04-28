@@ -1,4 +1,3 @@
-import { Dialog, DialogTitle } from '@material-ui/core'
 import { Close } from '@material-ui/icons'
 import {
     Button,
@@ -10,6 +9,8 @@ import {
     useTheme,
     Box,
     Typography,
+    Dialog,
+    DialogTitle,
 } from '@mui/material'
 import { useEffect, useState } from 'react'
 
@@ -18,6 +19,7 @@ import { GraphData, GraphLink, GraphNode, People } from '../../schemas';
 import { GraphPeopleService } from '../../services/GraphPeopleService';
 import FeedBackAlert from '../FeedBackAlert';
 import { ForceGraph2D, ForceGraph3D } from 'react-force-graph';
+import { GraphVisualizationService } from '../../services/GraphVisualizationService';
 
 export interface IPeopleDialogProps {
     state: boolean
@@ -65,6 +67,10 @@ export default function VisualizationDialog({
                 setLoadingError(true)
             })
         }
+
+        GraphVisualizationService.getVisualization(Number(node?.id)).then(res => {
+            setData(res.data)
+        })
 
     }, [])
 
@@ -154,7 +160,7 @@ export default function VisualizationDialog({
                     }
                 </Box>
 
-                <ForceGraph3D graphData={data} width={550} height={400} />
+                <ForceGraph3D graphData={data} width={550} height={400} nodeAutoColorBy="label" />
             </DialogContent>
             <Divider />
             <Box sx={{ width: "100%" }}>
