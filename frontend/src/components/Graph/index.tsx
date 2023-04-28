@@ -10,6 +10,7 @@ import { Grid } from '@mui/material';
 import FilterGraphData from '../FilterGraphData';
 import ActionsGraph from '../ActionsGraph';
 import VisualizationDialog from '../VisualizationDialog';
+import { GraphInteractive } from '../GraphInteractive';
 
 
 export default function Graph() {
@@ -58,7 +59,7 @@ export default function Graph() {
                 <Grid item xs={8}>
                     <Box >
                         <Box>
-                            <SelectGraph names={["Graph 2D", "Graph 3D"]} selectedGraph={selectedGraph} setSelectedGraph={setSelectedGraph} />
+                            <SelectGraph names={["Graph 2D", "Graph 3D", "Graph Interactive 2D", "Graph Interactive 3D"]} selectedGraph={selectedGraph} setSelectedGraph={setSelectedGraph} />
                         </Box>
                         <Box>
                             {
@@ -66,7 +67,7 @@ export default function Graph() {
                                     onNodeClick={(node) => nodeClickPeople(node)}
                                 /> :
                                     selectedGraph == 'Graph 2D' ? <ForceGraph2D graphData={data} nodeAutoColorBy="label" width={widthGraph} height={heightGraph - 80} /> :
-                                        <></>
+                                        <GraphInteractive width={widthGraph} height={heightGraph - 80} type={selectedGraph == 'Graph Interactive 2D' ? 'Graph 2D' : 'Graph 3D'} />
                             }
                         </Box>
                     </Box>
